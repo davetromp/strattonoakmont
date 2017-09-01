@@ -67,15 +67,17 @@ def getLatestBar(market, interval):
     return getBars(market, interval, True)
 
 
-def getSharpe(l):
+def getSharpe(l, days):
     """returns the sharpe of a ts of pandl"""
     df = pd.DataFrame(data=l)
     df['dd'] = df[0].diff()
     avg = df['dd'].mean()
     std = df['dd'].std()
-    # days = 12# figure out using the index which is datetime
-    sharpe = (avg / std) #* (365/days) ** 0.5
-    return sharpe
+    try:
+        sharpe = (avg / std)* (365/days) ** 0.5
+        return sharpe
+    except:
+        return None
 
 
 def backtest(cache):
@@ -134,8 +136,8 @@ def backtest(cache):
         count += 1
         ### END STRATEGY DEFINITION ###
 
-    sharpe_ratio = getSharpe(list(history['pandl']))
     days = (len(history) * TF) / (60 * 24)
+    sharpe_ratio = getSharpe(list(history['pandl']), days)
     fig, ax = plt.subplots(1)
     plt.plot(history['pandl'])
     fig.autofmt_xdate()
@@ -152,7 +154,8 @@ def backtest(cache):
     RTM = {}
     RTM_PERCENT = {}
     BO_PERCENT = {}
-    EXIT_PERCENT = {}
+    EXIT_PERCENT = {},
+    Sharpe = {}
     """.format(MARKET,
                days,
                trades,
@@ -162,7 +165,8 @@ def backtest(cache):
                RTM,
                RTM_PERCENT,
                BO_PERCENT,
-               EXIT_PERCENT)
+               EXIT_PERCENT,
+               sharpe_ratio)
     ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14,
             verticalalignment='top', bbox=props)
     plt.title("BACKTEST {}".format(MARKET))
@@ -200,16 +204,14 @@ def weAreLong(retries=1, delay=3):
     count = 0
     while count < retries:
         balance = API.getbalance(CURRENCY)
-        if balance['Balance'] == None or balance['Balance'] == 0.0:
-            long = False
-        else:
+        if not (balance['Balance'] == None or balance['Balance'] == 0.0):
             print "we are long"
-            long = True
+            return True
         count += 1
         if retries != 1:
             time.sleep(delay)
             print "Checking again if we are long"
-    return long
+    return False
 
 
 def weAreCovered(retries=1, delay=3):
@@ -219,15 +221,15 @@ def weAreCovered(retries=1, delay=3):
     while count < retries:
         balance = API.getbalance(CURRENCY)
         if balance['Available'] == None or balance['Available'] == 0.0:
-            covered = True
+            print "we are covered"
+            return True
         else:
             print "we are not covered"
-            covered = False
         count += 1
         if retries != 1:
             time.sleep(delay)
             print "Checking again if we are covered"
-    return covered
+    return False
 
 
 def buySignaled(candle_close_rate, ma, BO_possible):
