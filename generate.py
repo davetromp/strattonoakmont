@@ -7,15 +7,16 @@ for f in os.listdir("configs/"):
 print "generating new configfiles in folder configs"
 trades = ['BTC']
 for trade in trades:
-    currencies = ['LTC', 'ETH', 'BCC', 'XRP', 'XMR', 'DASH', 'NEO', 'OMG', 'STRAT', 'ETC']
+    # currencies = ['LTC', 'ETH', 'BCC', 'XRP', 'XMR', 'DASH', 'NEO', 'OMG', 'STRAT', 'ETC']
+    currencies = ['APX', 'RISE', 'MCO', 'LSK', 'XVG', 'NAV', 'TRIG', 'PAY', 'QTUM', 'MTL', 'BAT', 'ADX']
     for currency in currencies:
-        timeframes = [1, 5, 30]
+        timeframes = [1, 5]
         for tf in timeframes:
             means = [8, 20]
             for mean in means:
-                breakout = [True, False]
+                breakout = [True]
                 for bo in breakout:
-                    meanreversion = [True, False]
+                    meanreversion = [True]
                     if bo == False:
                         meanreversion = [True]
                     for mr in meanreversion:
@@ -29,7 +30,7 @@ for trade in trades:
                             else:
                                 bo_percs = [1.0]
                             for bo_perc in bo_percs:
-                                exit_percs = [1.0, 2.0, 3.0, 4.0, 5.0]
+                                exit_percs = [1.0, 2.0]
                                 for exit_perc in exit_percs:
                                     config = """
                                     TRADE = {}
