@@ -48,14 +48,21 @@ if __name__ == "__main__":
     runTests()
     best = bestOnes()
     for i in best.index:
-        base = "_".join(list(best.ix[i])[2:-1])
-        configfile = base + ".config"
         try:
-            copyfile("configs/" + configfile, "active/" +configfile)
-        except Exception as e:
-            print str(e)
-        plotfile = base + "..png"
-        try:
-            copyfile("tests/" + plotfile, "best/" +plotfile)
+            # base = "_".join(list(best.ix[i])[2:-1])
+            base = ""
+            for elem in list(best.ix[i])[2:-1]:
+                base += "_" + str(elem)
+            base = base[1:]
+            configfile = base + ".config"
+            try:
+                copyfile("configs/" + configfile, "active/" +configfile)
+            except Exception as e:
+                print str(e)
+            plotfile = base + ".png"
+            try:
+                copyfile("tests/" + plotfile, "best/" +plotfile)
+            except Exception as e:
+                print str(e)
         except Exception as e:
             print str(e)
