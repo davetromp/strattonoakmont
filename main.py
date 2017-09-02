@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import sys, os
+import sys
+import os
 import getopt
 from bittrex import bittrex
 import requests
@@ -74,7 +75,7 @@ def getSharpe(l, days):
     avg = df['dd'].mean()
     std = df['dd'].std()
     try:
-        sharpe = (avg / std)* (365/days) ** 0.5
+        sharpe = (avg / std) * (365 / days) ** 0.5
         return sharpe
     except:
         return None
@@ -88,52 +89,61 @@ def backtest(cache):
     if not cache:
         history = getBars(MARKET, TF)
     else:
-        cachefile = "cache/{}-{}.csv".format(MARKET,TF)
+        cachefile = "cache/{}-{}.csv".format(MARKET, TF)
         try:
-            history = pd.read_csv(cachefile, index_col="datetime", parse_dates=True)
+            history = pd.read_csv(
+                cachefile, index_col="datetime", parse_dates=True)
         except:
             history = getBars(MARKET, TF)
             history.to_csv(cachefile)
     history['ma'] = history['close'].rolling(MEAN).mean()
-    long = False
-    entry_price = 0.0
+    weAreLong = False
+    PRICE_DIPPED = False
+
+    entry = 0.0
+    exit = None
     pl = 0.0
     history['pandl'] = 0.0
     trades = 1
-    rtm_perc = (100.0 + RTM_PERCENT) / 100.0
-    rtm_perc_max = (100.0 + RTM_PERCENT + LOWER_SIGNAL_BOUND) / 100.0
-    bo_perc = (100.0 + BO_PERCENT) / 100.0
-    bo_perc_max = (100.0 + BO_PERCENT + UPPER_SIGNAL_BOUND) / 100.0
-    exit_perc = (100.0 + EXIT_PERCENT) / 100.0
 
     ### BEGIN STRATEGY DEFINITION ###
     count = 1
+
     for i in history.index:
+        candle_close_rate = history['ma'][i]
+        ma = history['close'][i]
         if count > MEAN:
             # playing revert to mean (RTM)
-            if history['ma'][i] * rtm_perc_max < history['close'][i] < history['ma'][i] * rtm_perc and not long and RTM:
-                entry = history['close'][i]
-                long = True
+            if not weAreLong and buySignaled(candle_close_rate, ma, PRICE_DIPPED):
+                entry = candle_close_rate
+                exit = candle_close_rate * (1.0 + (EXIT_PERCENT / 100.0))
+                stop = candle_close_rate * (1.0 - (STOP_PERC / 100.0))
+                weAreLong = True
                 history['pandl'][i] = pl
-            # playing breakout (BREAKOUT)
-            elif history['ma'][i] * bo_perc_max > history['close'][i] > history['ma'][i] * bo_perc and not long and BREAKOUT:
-                entry = history['close'][i]
-                long = True
+            elif weAreLong and history['high'][i] >= exit:
+                weAreLong = False
+                pl += (((exit - entry) / entry) * 100.0 ) - (2.0 * FEE)
                 history['pandl'][i] = pl
-            elif long and history['close'][i] >= entry * exit_perc:
-                exit = entry * exit_perc  # history['close'][i]
-                long = False
-                pl += ((exit * (1.0 - FEE)) / (entry * (1.0 + FEE)))
+                trades += 1
+            elif weAreLong and candle_close_rate <= stop:
+                weAreLong = False
+                pl += (((candle_close_rate - entry) / entry) * 100.0 ) - (2.0 * FEE)
                 history['pandl'][i] = pl
                 trades += 1
             else:
-                if long:
-                    fpl = (history['close'][-1] * 0.9975 / entry * 1.0025)
+                if weAreLong:
+                    # fpl = ((history['close'][i] * (1.0 - FEE)) - (entry * (1.0 + FEE)))
+                    # fpl = ( (history['close'][i] * (100.0 - FEE)) - (entry * (100.0 + FEE)) ) / 100.0
+                    fpl = ((candle_close_rate - entry) / entry) * 100.0
                     history['pandl'][i] = pl + fpl
                 else:
                     fpl = 0.0
                     history['pandl'][i] = pl + fpl
         count += 1
+        if candle_close_rate <= ma:
+            PRICE_DIPPED = True
+        else:
+            PRICE_DIPPED = False
         ### END STRATEGY DEFINITION ###
 
     days = (len(history) * TF) / (60 * 24)
@@ -155,6 +165,7 @@ def backtest(cache):
     RTM_PERCENT = {}
     BO_PERCENT = {}
     EXIT_PERCENT = {},
+    STOP = {}
     Sharpe = {}
     """.format(MARKET,
                days,
@@ -166,12 +177,13 @@ def backtest(cache):
                RTM_PERCENT,
                BO_PERCENT,
                EXIT_PERCENT,
+               STOP_PERC,
                sharpe_ratio)
     ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14,
             verticalalignment='top', bbox=props)
     plt.title("BACKTEST {}".format(MARKET))
     plt.savefig(BACKTESTFILE)
-    print "{},{},{},{},{},{},{},{},{}".format(MARKET,
+    print "{},{},{},{},{},{},{},{},{},{}".format(MARKET,
                     TF,
                     MEAN,
                     BREAKOUT,
@@ -179,6 +191,7 @@ def backtest(cache):
                     RTM_PERCENT,
                     BO_PERCENT,
                     EXIT_PERCENT,
+                    STOP_PERC,
                     sharpe_ratio)
     # plt.show()
 
@@ -234,20 +247,20 @@ def weAreCovered(retries=1, delay=3):
 
 def buySignaled(candle_close_rate, ma, BO_possible):
     mean_diff = candle_close_rate / ma
-    print "candle close rate:", candle_close_rate
-    print "moving avarage price:", ma
-    print "Mean difference:", mean_diff
+    # print "candle close rate:", candle_close_rate
+    # print "moving avarage price:", ma
+    # print "Mean difference:", mean_diff
     rtm_perc = (100.0 - RTM_PERCENT) / 100.0
     bo_perc = (100.0 + BO_PERCENT) / 100.0
     rtm_perc_max = (100.0 - RTM_PERCENT + LOWER_SIGNAL_BOUND) / 100.0
     bo_perc_max = (100.0 + BO_PERCENT + UPPER_SIGNAL_BOUND) / 100.0
     # Price has to above below the mean to trigger a long BO signal.
     if mean_diff >= bo_perc and BREAKOUT and BO_possible:
-        print "Break out signal"
+        # print "Break out signal"
         return True
     # Price has to break below the mean to trigger a long RTM signal.
     elif mean_diff <= rtm_perc and RTM:
-        print "Reversion to the mean signal"
+        # print "Reversion to the mean signal"
         return True
     return False
 
@@ -279,6 +292,32 @@ def getBestSellRate(candle_close_rate):
     print "available prices out of BOUND"
 
 
+def getBestBuyRate(candle_close_rate):
+    buyorderbook = pd.DataFrame(API.getorderbook(MARKET, 'buy'))
+    if not buyorderbook.empty:
+        # filter out price levels that are within our set upper and lower
+        # bounds
+        lower_sell_price_bound = candle_close_rate * \
+            (100.0 - LOWER_SELL_BOUND) / 100.0
+        upper_sell_price_bound = candle_close_rate * \
+            (100.0 + UPPER_SELL_BOUND) / 100.0
+        buyorderbook = buyorderbook[
+            buyorderbook['Rate'] <= upper_sell_price_bound]
+        buyorderbook = buyorderbook[
+            buyorderbook['Rate'] >= lower_sell_price_bound]
+        # print buyorderbook
+    if not buyorderbook.empty:
+        # filter out price levels that can fully fill our order size
+        buyorderbook = buyorderbook[buyorderbook['Quantity'] >= QUANTITY]
+        # print buyorderbook
+    if not buyorderbook.empty:
+        best_buy_rate = buyorderbook['Rate'][0]
+        print "best buy rate:", best_buy_rate
+        print 'Slippage should be about:', (1 - (candle_close_rate / best_buy_rate)) * 100, "%"
+        return best_buy_rate
+    print "available prices out of BOUND"
+
+
 def getPricePoints():
     # get prices and calculte rolling mean.
     df = getMarketPrices(MARKET, TF)
@@ -302,8 +341,12 @@ def trade():
         print "Timeframe not supported for syncing."
         print "1, 5, 30 and 60 min timeframe is supported for syncing."
 
-    BO_possible = False
+    entry = None
+    selluuid = None
 
+    PRICE_DIPPED = False
+    # set a switch for breakout to only be possible if price has dipped below ma
+    # this is to prevent to get BO signal while at price extremes.
     while True:
         start = time.time()
 
@@ -311,14 +354,8 @@ def trade():
         print ">>>", datetime.datetime.now()
         print "{} on {} min".format(MARKET, TF)
         candle_close_rate, ma = getPricePoints()
-        # set a switch for breakout to only be possible if price has been below the ma
-        # this is to prevent to get BO signal while starting the bot at price
-        # extrems.
-        if not BO_possible:
-            # make breakout possible if price has moved below ma once
-            BO_possible = candle_close_rate <= ma
         we_are_long = weAreLong()
-        if not we_are_long and buySignaled(candle_close_rate, ma, BO_possible):
+        if not we_are_long and buySignaled(candle_close_rate, ma, PRICE_DIPPED):
             best_sell_rate = getBestSellRate(candle_close_rate)
             if best_sell_rate is not None:
                 buylimit = API.buylimit(MARKET, QUANTITY, best_sell_rate)
@@ -326,11 +363,13 @@ def trade():
                     print "buylimit succesfully placed"
                     print "Checking position"
                     if weAreLong(3):
+                        entry = candle_close_rate
                         print "Long position is confirmed"
                         print "Placing sell limit"
                         selllimit = API.selllimit(
                             MARKET, QUANTITY, best_sell_rate * (1.0 + (EXIT_PERCENT / 100.0)))
-                        if selllimit['uuid']:
+                        selluuid = selllimit['uuid']
+                        if selluuid:
                             print "Sell limit succesfully placed"
                             if weAreCovered(3):
                                 open_orders = API.getopenorders(MARKET)
@@ -341,16 +380,36 @@ def trade():
                         buy_limit_cancel = API.cancel(buylimit['uuid'])
                         print buy_limit_cancel
         elif we_are_long:
-            print "do some trade management on our long position"
+            print "Do some trade management on our long position"
+            print "Check distance from open sell limit; if over stop + exit_perc, initiate exit"
+            open_orders = API.getopenorders(MARKET)
+            if open_orders and open_orders[0]['OrderType'] == 'LIMIT_SELL':
+                sell_limit_price = open_orders[0]['Limit']
+                entry_price = sell_limit_price / (1.0 + EXIT_PERCENT)
+                stop_rate = entry_price * (1.0 - (STOP_PERC / 100.0))
+                if candle_close_rate <= stop_rate:
+                    print "price went below our stop rate"
+                    print "cancelling current sell limit"
+                    API.cancel(open_orders[0]['OrderUuid'])
+                    print "placing a new sell limit at stop level"
+                    avail_balance = API.getbalance(CURRENCY)['Available']
+                    bestprice = getBestBuyRate(candle_close_rate)
+                    if not bestprice:
+                        bestprice = candle_close_rate
+                    selllimit = API.selllimit(
+                        MARKET, avail_balance, bestprice)
             print "check if we have a sell limmit in place"
             if not weAreCovered():
                 print "we have a long position without a corresponding sell limit"
-                print "let's set a sell limit for the available balance at current candle_close_rate and stop the bot"
-                # TODO: implement getBestBuyRate
+                print "let's set a sell limit for the available balance at best price"
                 avail_balance = API.getbalance(CURRENCY)['Available']
+                bestprice = getBestBuyRate(candle_close_rate)
                 selllimit = API.selllimit(
-                    MARKET, avail_balance, candle_close_rate)
-            # print "check distance from entry; if over stop, initiate exit and pause trading"
+                    MARKET, avail_balance, bestprice)
+        if candle_close_rate < ma:
+            PRICE_DIPPED = True
+        else:
+            PRICE_DIPPED = False
         ### TRADE END ###
 
         processing_time = time.time() - start
@@ -389,15 +448,19 @@ if __name__ == "__main__":
     LOWER_SIGNAL_BOUND = float(setting['LOWER_SIGNAL_BOUND'])
     UPPER_BUY_BOUND = float(setting['UPPER_BUY_BOUND'])
     LOWER_BUY_BOUND = float(setting['LOWER_BUY_BOUND'])
+    UPPER_SELL_BOUND = float(setting['UPPER_SELL_BOUND'])
+    LOWER_SELL_BOUND = float(setting['LOWER_SELL_BOUND'])
     FEE = float(setting['FEE'])
+    STOP_PERC = float(setting['STOP_PERC'])
     # Get API key and secret from https://bittrex.com/Account/ManageApiKey
     API = bittrex(KEY, SECRET)
     MARKET = '{0}-{1}'.format(TRADE, CURRENCY)
+
     if BACKTESTFILE != "":
         if cache:
             backtest(True)
         else:
             backtest(False)
     else:
-        print "let's trade"
+        print "let's trade {}".format(MARKET)
         trade()
