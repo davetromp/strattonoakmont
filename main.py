@@ -385,7 +385,7 @@ def trade():
             open_orders = API.getopenorders(MARKET)
             if open_orders and open_orders[0]['OrderType'] == 'LIMIT_SELL':
                 sell_limit_price = open_orders[0]['Limit']
-                entry_price = sell_limit_price / (1.0 + EXIT_PERCENT)
+                entry_price = sell_limit_price / (1.0 + (EXIT_PERCENT / 100.0))
                 stop_rate = entry_price * (1.0 - (STOP_PERC / 100.0))
                 if candle_close_rate <= stop_rate:
                     print "price went below our stop rate"
