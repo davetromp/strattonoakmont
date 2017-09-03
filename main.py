@@ -356,6 +356,8 @@ def trade():
         print ">>>", datetime.datetime.now()
         print "{} on {} min".format(MARKET, TF)
         candle_close_rate, ma = getPricePoints()
+        if BTC_QUANTITY:
+            QUANTITY = BTC_QUANTITY / candle_close_rate
         we_are_long = weAreLong()
         if not we_are_long and buySignaled(candle_close_rate, ma, PRICE_DIPPED):
             best_sell_rate = getBestSellRate(candle_close_rate)
@@ -446,6 +448,7 @@ if __name__ == "__main__":
     BO_PERCENT = float(setting['BO_PERCENT'])
     EXIT_PERCENT = float(setting['EXIT_PERCENT'])
     QUANTITY = float(setting['QUANTITY'])
+    BTC_QUANTITY = float(setting['BTC_QUANTITY'])
     UPPER_SIGNAL_BOUND = float(setting['UPPER_SIGNAL_BOUND'])
     LOWER_SIGNAL_BOUND = float(setting['LOWER_SIGNAL_BOUND'])
     UPPER_BUY_BOUND = float(setting['UPPER_BUY_BOUND'])
