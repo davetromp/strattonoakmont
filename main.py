@@ -284,6 +284,7 @@ def getBestSellRate(candle_close_rate):
         sellorderbook = sellorderbook[sellorderbook['Quantity'] >= QUANTITY]
         # print sellorderbook
     if not sellorderbook.empty:
+        sellorderbook = sellorderbook.reset_index()
         best_sell_rate = sellorderbook['Rate'][0]
         # print sellorderbook
         print "best sell rate:", best_sell_rate
@@ -311,6 +312,7 @@ def getBestBuyRate(candle_close_rate):
         buyorderbook = buyorderbook[buyorderbook['Quantity'] >= QUANTITY]
         # print buyorderbook
     if not buyorderbook.empty:
+        buyorderbook = buyorderbook.reset_index()
         best_buy_rate = buyorderbook['Rate'][0]
         print "best buy rate:", best_buy_rate
         print 'Slippage should be about:', (1 - (candle_close_rate / best_buy_rate)) * 100, "%"
