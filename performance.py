@@ -9,40 +9,34 @@ from secret import *
 
 
 def getPerformance(market):
-    API = bittrex(KEY, SECRET)
-    orderhistory = API.getorderhistory(market, 20)
-    df = pd.DataFrame(orderhistory)
-    df = df.sort_values('Closed')
-    # df = df [3:]
-    # print df
-    buys = []
-    solds = []
-    bands =[]
-    bs =0.0
-    buy = 0.0
-    sold = 0.0
-    for i in df.index:
-        if df['OrderType'][i] == 'LIMIT_BUY':
-            buy += df['PricePerUnit'][i] * df['Quantity'][i]
-            bs -= df['PricePerUnit'][i] * df['Quantity'][i]
+    try:
+        API = bittrex(KEY, SECRET)
+        orderhistory = API.getorderhistory(market, 20)
+        if orderhistory:
+            df = pd.DataFrame(orderhistory)
+            df = df.sort_values('Closed')
+            diffs = []
+            buy = 0.0
+            sell = 0.0
+            diffs.append(0.0)
+            for i in df.index:
+                if df['OrderType'][i] == 'LIMIT_BUY':
+                    buy += df['PricePerUnit'][i] * df['Quantity'][i]
+                else:
+                    sell += df['PricePerUnit'][i] * df['Quantity'][i]
+                diffs.append(sell - buy)
+            print "Difference between cumulative sells and buys"
+            print sell / buy
+            plt.plot(diffs)
+            plt.axhline(y=0.0, color='r', linestyle='-')
+            plt.title("Difference between cumulative sells and buys over time")
+            plt.ylabel("Difference %")
+            plt.xlabel("Limit orders")
+            plt.show()
         else:
-            sold += df['PricePerUnit'][i] * df['Quantity'][i]
-            bs += df['PricePerUnit'][i] * df['Quantity'][i]
-        buys.append(buy)
-        solds.append(sold)
-        bands.append(bs)
-    # print buys
-    buy_avg = np.mean(buys)
-    # print buy_avg
-    # print solds
-    sell_avg = np.mean(solds)
-    # print sell_avg
-    print "Difference between average sells and buys"
-    print sell_avg - buy_avg
-    # plt.plot(pd.to_datetime(df['Closed']), buys)
-    # plt.plot(pd.to_datetime(df['Closed']), solds)
-    plt.plot(pd.to_datetime(df['Closed']), bands)
-    plt.show()
+            print "There is no order history yet."
+    except Exception as e:
+        print "Failed at getPerformance:", str(e)
 
 
 if __name__ == "__main__":
