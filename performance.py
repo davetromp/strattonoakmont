@@ -26,9 +26,9 @@ def getPerformance(market):
                 else:
                     sell += df['PricePerUnit'][i] * df['Quantity'][i]
                     # sells.append(sell)
-                    diffs.append(sell - buy)
+                    diffs.append(((sell - buy) / buy) * 100.0)
             print "Difference between cumulative sells and buys"
-            print ((sell - buy) / buy) * 100.0, "%"
+            print diffs[-1], "%"
             plt.plot(diffs)
             # plt.plot(sells)
             plt.axhline(y=0.0, color='r', linestyle='-')
