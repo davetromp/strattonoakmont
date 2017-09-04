@@ -16,6 +16,7 @@ def getPerformance(market):
             df = pd.DataFrame(orderhistory)
             df = df.sort_values('Closed')
             diffs = []
+            sells = []
             buy = 0.0
             sell = 0.0
             diffs.append(0.0)
@@ -24,14 +25,16 @@ def getPerformance(market):
                     buy += df['PricePerUnit'][i] * df['Quantity'][i]
                 else:
                     sell += df['PricePerUnit'][i] * df['Quantity'][i]
-                diffs.append(sell - buy)
+                    # sells.append(sell)
+                    diffs.append(sell - buy)
             print "Difference between cumulative sells and buys"
-            print sell / buy
+            print ((sell - buy) / buy) * 100.0, "%"
             plt.plot(diffs)
+            # plt.plot(sells)
             plt.axhline(y=0.0, color='r', linestyle='-')
             plt.title("Difference between cumulative sells and buys over time")
             plt.ylabel("Difference %")
-            plt.xlabel("Limit orders")
+            plt.xlabel("SELL Limit orders")
             plt.show()
         else:
             print "There is no order history yet."
