@@ -20,15 +20,17 @@ def getPerformance(market, plot = True):
             if df['OrderType'][0] == "LIMIT_SELL":
                 df = df [1:]
             diffs = []
+            pl = 0.0
             buy = 0.0
             sell = 0.0
             diffs.append(0.0)
             for i in df.index:
                 if df['OrderType'][i] == 'LIMIT_BUY':
-                    buy += df['PricePerUnit'][i] * df['Quantity'][i]
+                    buy = df['PricePerUnit'][i] * df['Quantity'][i]
                 else:
-                    sell += df['PricePerUnit'][i] * df['Quantity'][i]
-                    diffs.append( ( (sell - buy) / buy ) * 100.0)
+                    sell = df['PricePerUnit'][i] * df['Quantity'][i]
+                    pl += ( (sell - buy) / buy ) * 100.0
+                    diffs.append(pl)
             if plot:
                 print "Difference between cumulative sells and buys"
                 print diffs[-1], "%"
