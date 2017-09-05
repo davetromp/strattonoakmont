@@ -99,7 +99,7 @@ class bittrex(object):
     def getorder(self, uuid):
         return self.query('getorder', {'uuid': uuid})
 
-    def getorderhistory(self, market, count):
+    def getorderhistory(self, market, count=20):
         return self.query('getorderhistory', {'market': market, 'count': count})
 
     def getwithdrawalhistory(self, currency, count):
