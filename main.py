@@ -414,7 +414,7 @@ def trade():
                 orderhistory = API.getorderhistory(MARKET)
                 if orderhistory and orderhistory[0]['OrderType'] == 'LIMIT_BUY':
                     avail_balance = API.getbalance(CURRENCY)['Available']
-                    buy_limit_price = open_orders[0]['Limit']
+                    buy_limit_price = orderhistory[0]['Limit']
                     targetprice = buy_limit_price * (1.0 + (EXIT_PERCENT / 100.0))
                     sellimit = API.selllimit(
                         MARKET, avail_balance, targetprice)
