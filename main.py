@@ -370,15 +370,20 @@ def trade():
                         entry = candle_close_rate
                         print "Long position is confirmed"
                         print "Placing sell limit"
-                        selllimit = API.selllimit(
-                            MARKET, QUANTITY, best_sell_rate * (1.0 + (EXIT_PERCENT / 100.0)))
-                        selluuid = selllimit['uuid']
+                        try:
+                            selllimit = API.selllimit(
+                                MARKET, QUANTITY, best_sell_rate * (1.0 + (EXIT_PERCENT / 100.0)))
+                            selluuid = selllimit['uuid']
+                        except:
+                            pass
                         if selluuid:
                             print "Sell limit succesfully placed"
                             if weAreCovered(3):
                                 open_orders = API.getopenorders(MARKET)
                                 print "Open orders"
                                 print open_orders
+                        else:
+                            print "no selluuid"
                     else:
                         print "We are not long, need to cancel buy limit"
                         buy_limit_cancel = API.cancel(buylimit['uuid'])
