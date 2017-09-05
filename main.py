@@ -412,7 +412,7 @@ def trade():
                 print "we have a long position without a corresponding sell limit"
                 print "let's set a sell limit for the available balance at target level"
                 orderhistory = API.getorderhistory(MARKET)
-                if orderhistory and open_orders[0]['OrderType'] == 'LIMIT_BUY':
+                if orderhistory and orderhistory[0]['OrderType'] == 'LIMIT_BUY':
                     avail_balance = API.getbalance(CURRENCY)['Available']
                     buy_limit_price = open_orders[0]['Limit']
                     targetprice = buy_limit_price * (1.0 + (EXIT_PERCENT / 100.0))
