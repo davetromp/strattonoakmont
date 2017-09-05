@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import gc
 import sys
 import os
 import getopt
@@ -325,7 +326,7 @@ def getPricePoints():
     df = getMarketPrices(MARKET, TF)
     if len(df) < MEAN:
         df = getBars(MARKET, TF)
-        print "Using API 2 for data retreival:", len(df)
+        print "Using API 2 for data retrieval:", len(df)
     df['ma'] = df['close'].rolling(MEAN).mean()
     candle_close_rate = df['close'][-1]
     ma = df['ma'][-1]
@@ -442,6 +443,7 @@ def trade():
             print "1, 5, 30 and 60 min timeframe is supported for syncing."
             print "timing based on processing time"
             time.sleep((TF * 60) - processing_time)
+        gc.collect()
 
 
 if __name__ == "__main__":
