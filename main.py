@@ -362,7 +362,7 @@ def enterLong(candle_close_rate):
     best_sell_rate = getBestSellRate(candle_close_rate)
     if best_sell_rate is not None:
         buylimit = API.buylimit(MARKET, QUANTITY, best_sell_rate)
-        if buylimit['uuid']:
+        if 'uuid' in buylimit:
             print "buylimit succesfully placed"
             print "Checking position"
             if weAreLong(3):
