@@ -364,28 +364,34 @@ def enterLong(candle_close_rate):
         buylimit = API.buylimit(MARKET, QUANTITY, best_sell_rate)
         if 'uuid' in buylimit:
             print "buylimit succesfully placed"
-            print "Checking position"
-            if weAreLong(3):
-                entry = candle_close_rate
-                print "Long position is confirmed"
-                print "Placing sell limit"
-                try:
-                    selllimit = API.selllimit(
-                        MARKET, QUANTITY, best_sell_rate * (1.0 + (EXIT_PERCENT / 100.0)))
-                except:
-                    selllimit = {}
-                if 'uuid' in selllimit:
-                    print "Sell limit succesfully placed"
-                    if weAreCovered(3):
-                        open_orders = API.getopenorders(MARKET)
-                        print "Open orders"
-                        print open_orders
-                else:
-                    print "no selluuid"
+        else:
+            print "could not get uuid for buylimit"
+        print "Checking position"
+        if weAreLong(3):
+            entry = candle_close_rate
+            print "Long position is confirmed"
+            print "Placing sell limit"
+            try:
+                selllimit = API.selllimit(
+                    MARKET, QUANTITY, best_sell_rate * (1.0 + (EXIT_PERCENT / 100.0)))
+            except:
+                print "failed at enterLong while placing sell limit"
+                selllimit = {}
+            if 'uuid' in selllimit:
+                print "Sell limit succesfully placed"
+                if weAreCovered(3):
+                    open_orders = API.getopenorders(MARKET)
+                    print "Open orders"
+                    print open_orders
             else:
-                print "We are not long, need to cancel buy limit"
+                print "no selluuid"
+        else:
+            print "We are not long, need to cancel buy limit"
+            try:
                 buy_limit_cancel = API.cancel(buylimit['uuid'])
                 print buy_limit_cancel
+            except:
+                print "failed at enterLong while cancelling buylimit order"
 
 
 def manageTrade(candle_close_rate):
