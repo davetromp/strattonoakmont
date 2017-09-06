@@ -62,6 +62,8 @@ def getBars(market, interval=5, latest=False):
     del datadf['BV']
     del datadf['V']
     datadf.columns = ['close', 'high', 'low', 'open']
+    if BACKTESTFILE != "":
+        return datadf
     return datadf.tail(MEAN)
 
 
@@ -209,6 +211,8 @@ def getMarketPrices(market, interval):
     df = pd.DataFrame(history)
     df.index = pd.to_datetime(df['TimeStamp'])
     prices = df['Price'].resample(tf[interval]).ohlc()
+    if BACKTESTFILE != "":
+        return prices.dropna()
     return prices.dropna().tail(MEAN)
 
 
