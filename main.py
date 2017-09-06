@@ -362,37 +362,39 @@ def enterLong(candle_close_rate):
     best_sell_rate = getBestSellRate(candle_close_rate)
     if best_sell_rate is not None:
         buylimit = API.buylimit(MARKET, QUANTITY, best_sell_rate)
+        print buylimit
         if 'uuid' in buylimit:
             print "buylimit succesfully placed"
+
+            print "Checking position"
+            if weAreLong(3):
+                entry = candle_close_rate
+                print "Long position is confirmed"
+                print "Placing sell limit"
+                try:
+                    selllimit = API.selllimit(
+                        MARKET, QUANTITY, best_sell_rate * (1.0 + (EXIT_PERCENT / 100.0)))
+                except:
+                    print "failed at enterLong while placing sell limit"
+                    selllimit = {}
+                if 'uuid' in selllimit:
+                    print "Sell limit succesfully placed"
+                    if weAreCovered(3):
+                        open_orders = API.getopenorders(MARKET)
+                        print "Open orders"
+                        print open_orders
+                else:
+                    print "no selluuid"
+            else:
+                print "We are not long, need to cancel buy limit"
+                try:
+                    buy_limit_cancel = API.cancel(buylimit['uuid'])
+                    print buy_limit_cancel
+                except:
+                    print "failed at enterLong while cancelling buylimit order"
         else:
             print "could not get uuid for buylimit"
-        print "Checking position"
-        if weAreLong(3):
-            entry = candle_close_rate
-            print "Long position is confirmed"
-            print "Placing sell limit"
-            try:
-                selllimit = API.selllimit(
-                    MARKET, QUANTITY, best_sell_rate * (1.0 + (EXIT_PERCENT / 100.0)))
-            except:
-                print "failed at enterLong while placing sell limit"
-                selllimit = {}
-            if 'uuid' in selllimit:
-                print "Sell limit succesfully placed"
-                if weAreCovered(3):
-                    open_orders = API.getopenorders(MARKET)
-                    print "Open orders"
-                    print open_orders
-            else:
-                print "no selluuid"
-        else:
-            print "We are not long, need to cancel buy limit"
-            try:
-                buy_limit_cancel = API.cancel(buylimit['uuid'])
-                print buy_limit_cancel
-            except:
-                print "failed at enterLong while cancelling buylimit order"
-
+            print "could be tst buy failed. If not we will place sell limit at next candle close"
 
 def manageTrade(candle_close_rate):
     print "Do some trade management on a long position"
