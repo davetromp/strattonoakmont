@@ -333,8 +333,82 @@ def getPricePoints():
     return candle_close_rate, ma
 
 
-def trade():
+def checkStop(candle_close_rate):
+    print "Check if stop level is hit."
+    open_orders = API.getopenorders(MARKET)
+    if open_orders and open_orders[0]['OrderType'] == 'LIMIT_SELL':
+        sell_limit_price = open_orders[0]['Limit']
+        entry_price = sell_limit_price / (1.0 + (EXIT_PERCENT / 100.0))
+        stop_rate = entry_price * (1.0 - (STOP_PERC / 100.0))
+        if candle_close_rate <= stop_rate:
+            print "price went below our stop rate"
+            print "cancelling current sell limit"
+            API.cancel(open_orders[0]['OrderUuid'])
+            time.sleep(3)
+            print "placing a new sell limit at stop level"
+            avail_balance = API.getbalance(CURRENCY)['Available']
+            bestprice = getBestBuyRate(candle_close_rate)
+            if not bestprice:
+                bestprice = candle_close_rate
+            selllimit = API.selllimit(
+                MARKET, avail_balance, bestprice)
+            if 'uuid' in selllimit:
+                print "selllimit placed. Price: {}, Units: {}".format(bestprice, avail_balance)
+            else:
+                print "selllimit failed"
 
+
+def enterLong(candle_close_rate):
+    best_sell_rate = getBestSellRate(candle_close_rate)
+    if best_sell_rate is not None:
+        buylimit = API.buylimit(MARKET, QUANTITY, best_sell_rate)
+        if buylimit['uuid']:
+            print "buylimit succesfully placed"
+            print "Checking position"
+            if weAreLong(3):
+                entry = candle_close_rate
+                print "Long position is confirmed"
+                print "Placing sell limit"
+                try:
+                    selllimit = API.selllimit(
+                        MARKET, QUANTITY, best_sell_rate * (1.0 + (EXIT_PERCENT / 100.0)))
+                except:
+                    selllimit = {}
+                if 'uuid' in selllimit:
+                    print "Sell limit succesfully placed"
+                    if weAreCovered(3):
+                        open_orders = API.getopenorders(MARKET)
+                        print "Open orders"
+                        print open_orders
+                else:
+                    print "no selluuid"
+            else:
+                print "We are not long, need to cancel buy limit"
+                buy_limit_cancel = API.cancel(buylimit['uuid'])
+                print buy_limit_cancel
+
+
+def manageTrade(candle_close_rate):
+    print "Do some trade management on a long position"
+    if not weAreCovered():
+        print "we have a long position without a corresponding sell limit"
+        print "let's set a sell limit for the available balance at target level"
+        orderhistory = API.getorderhistory(MARKET)
+        if orderhistory and orderhistory[0]['OrderType'] == 'LIMIT_BUY':
+            avail_balance = API.getbalance(CURRENCY)['Available']
+            buy_limit_price = orderhistory[0]['Limit']
+            targetprice = buy_limit_price * (1.0 + (EXIT_PERCENT / 100.0))
+            sellimit = API.selllimit(
+                MARKET, avail_balance, targetprice)
+        else:
+            print "get out at best current price"
+            bestprice = getBestBuyRate(candle_close_rate)
+            sellimit = API.selllimit(
+                MARKET, avail_balance, bestprice)
+    checkStop(candle_close_rate)
+
+
+def trade():
     t = datetime.datetime.now()
     if TF == 1:
         time.sleep((TF * 60) - t.second)
@@ -343,16 +417,13 @@ def trade():
     else:
         print "Timeframe not supported for syncing."
         print "1, 5, 30 and 60 min timeframe is supported for syncing."
-
     entry = None
     selluuid = None
-
     PRICE_DIPPED = False
     # set a switch for breakout to only be possible if price has dipped below ma
     # this is to prevent to get BO signal while at price extremes.
     while True:
         start = time.time()
-
         ### TRADE BEGIN ###
         print ">>>", datetime.datetime.now()
         print "{} on {} min".format(MARKET, TF)
@@ -361,75 +432,14 @@ def trade():
             QUANTITY = BTC_QUANTITY / candle_close_rate
         we_are_long = weAreLong()
         if not we_are_long and buySignaled(candle_close_rate, ma, PRICE_DIPPED):
-            best_sell_rate = getBestSellRate(candle_close_rate)
-            if best_sell_rate is not None:
-                buylimit = API.buylimit(MARKET, QUANTITY, best_sell_rate)
-                if buylimit['uuid']:
-                    print "buylimit succesfully placed"
-                    print "Checking position"
-                    if weAreLong(3):
-                        entry = candle_close_rate
-                        print "Long position is confirmed"
-                        print "Placing sell limit"
-                        try:
-                            selllimit = API.selllimit(
-                                MARKET, QUANTITY, best_sell_rate * (1.0 + (EXIT_PERCENT / 100.0)))
-                            selluuid = selllimit['uuid']
-                        except:
-                            pass
-                        if selluuid:
-                            print "Sell limit succesfully placed"
-                            if weAreCovered(3):
-                                open_orders = API.getopenorders(MARKET)
-                                print "Open orders"
-                                print open_orders
-                        else:
-                            print "no selluuid"
-                    else:
-                        print "We are not long, need to cancel buy limit"
-                        buy_limit_cancel = API.cancel(buylimit['uuid'])
-                        print buy_limit_cancel
+            enterLong(candle_close_rate)
         elif we_are_long:
-            print "Do some trade management on our long position"
-            print "Check distance from open sell limit; if over stop + exit_perc, initiate exit"
-            open_orders = API.getopenorders(MARKET)
-            if open_orders and open_orders[0]['OrderType'] == 'LIMIT_SELL':
-                sell_limit_price = open_orders[0]['Limit']
-                entry_price = sell_limit_price / (1.0 + (EXIT_PERCENT / 100.0))
-                stop_rate = entry_price * (1.0 - (STOP_PERC / 100.0))
-                if candle_close_rate <= stop_rate:
-                    print "price went below our stop rate"
-                    print "cancelling current sell limit"
-                    API.cancel(open_orders[0]['OrderUuid'])
-                    print "placing a new sell limit at stop level"
-                    avail_balance = API.getbalance(CURRENCY)['Available']
-                    bestprice = getBestBuyRate(candle_close_rate)
-                    if not bestprice:
-                        bestprice = candle_close_rate
-                    selllimit = API.selllimit(
-                        MARKET, avail_balance, bestprice)
-            print "check if we have a sell limmit in place"
-            if not weAreCovered():
-                print "we have a long position without a corresponding sell limit"
-                print "let's set a sell limit for the available balance at target level"
-                orderhistory = API.getorderhistory(MARKET)
-                if orderhistory and orderhistory[0]['OrderType'] == 'LIMIT_BUY':
-                    avail_balance = API.getbalance(CURRENCY)['Available']
-                    buy_limit_price = orderhistory[0]['Limit']
-                    targetprice = buy_limit_price * (1.0 + (EXIT_PERCENT / 100.0))
-                    sellimit = API.selllimit(
-                        MARKET, avail_balance, targetprice)
-                else:
-                    print "get out at best current price"
-                    bestprice = getBestBuyRate(candle_close_rate)
-                    sellimit = API.selllimit(
-                        MARKET, avail_balance, bestprice)
+            manageTrade(candle_close_rate)
         if candle_close_rate < ma:
             PRICE_DIPPED = True
         else:
             PRICE_DIPPED = False
         ### TRADE END ###
-
         processing_time = time.time() - start
         print "processing_time", processing_time
         # resyncing candle time
@@ -443,6 +453,7 @@ def trade():
             print "1, 5, 30 and 60 min timeframe is supported for syncing."
             print "timing based on processing time"
             time.sleep((TF * 60) - processing_time)
+        # do some garbage collection
         gc.collect()
 
 
