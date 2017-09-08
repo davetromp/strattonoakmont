@@ -3,6 +3,7 @@
 import gc
 import sys
 import os
+import logging
 import getopt
 from bittrex import bittrex
 import requests
@@ -23,11 +24,11 @@ def main(argv):
     try:
         opts, args = getopt.getopt(argv, "hc:b:m", ["cfile=", "bfile="])
     except getopt.GetoptError:
-        print 'main.py -c <configfile> -b <backtestfile>'
+        logging.info('main.py -c <configfile> -b <backtestfile>')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print 'main.py -c <configfile> -b <backtestfile>'
+            logging.info('main.py -c <configfile> -b <backtestfile>')
             sys.exit()
         elif opt in ("-c", "--cfile"):
             configfile = arg
@@ -67,8 +68,8 @@ def getBars(market, interval=5, latest=False):
             return datadf
         return datadf.tail(MEAN)
     except Exception as e:
-        print("failed at getBars")
-        print(str(e))
+        logging.info("failed at getBars")
+        logging.info(str(e))
 
 
 def getLatestBar(market, interval):
@@ -190,7 +191,7 @@ def backtest(cache):
             verticalalignment='top', bbox=props)
     plt.title("BACKTEST {}".format(MARKET))
     plt.savefig(BACKTESTFILE)
-    print "{},{},{},{},{},{},{},{},{},{}".format(MARKET,
+    logging.info("{},{},{},{},{},{},{},{},{},{}".format(MARKET,
                     TF,
                     MEAN,
                     BREAKOUT,
@@ -199,7 +200,7 @@ def backtest(cache):
                     BO_PERCENT,
                     EXIT_PERCENT,
                     STOP_PERC,
-                    sharpe_ratio)
+                    sharpe_ratio))
     plt.show()
 
 
@@ -220,8 +221,8 @@ def getMarketPrices(market, interval):
             return prices.dropna()
         return prices.dropna().tail(MEAN)
     except Exception as e:
-        print("failed at getMarketPrices")
-        print(str(e))
+        logging.info("failed at getMarketPrices")
+        logging.info(str(e))
 
 def weAreLong(retries=1, delay=3):
     try:
@@ -231,16 +232,16 @@ def weAreLong(retries=1, delay=3):
         while count < retries:
             balance = API.getbalance(CURRENCY)
             if not (balance['Balance'] == None or balance['Balance'] == 0.0):
-                print "we are long"
+                logging.info("we are long")
                 return True
             count += 1
             if retries != 1:
                 time.sleep(delay)
-                print "Checking again if we are long"
+                logging.info("Checking again if we are long")
         return False
     except Exception as e:
-        print("failed at weAreLong")
-        print(str(e))
+        logging.info("failed at weAreLong")
+        logging.info(str(e))
 
 def weAreCovered(retries=1, delay=3):
     try:
@@ -250,18 +251,18 @@ def weAreCovered(retries=1, delay=3):
         while count < retries:
             balance = API.getbalance(CURRENCY)
             if balance['Available'] == None or balance['Available'] == 0.0:
-                print "we are covered"
+                logging.info("we are covered")
                 return True
             else:
-                print "we are not covered"
+                logging.info("we are not covered")
             count += 1
             if retries != 1:
                 time.sleep(delay)
-                print "Checking again if we are covered"
+                logging.info("Checking again if we are covered")
         return False
     except Exception as e:
-        print("failed at weAreCovered")
-        print(str(e))
+        logging.info("failed at weAreCovered")
+        logging.info(str(e))
 
 
 def buySignaled(candle_close_rate, ma, BO_possible):
@@ -276,16 +277,16 @@ def buySignaled(candle_close_rate, ma, BO_possible):
         bo_perc_max = (100.0 + BO_PERCENT + UPPER_SIGNAL_BOUND) / 100.0
         # Price has to above below the mean to trigger a long BO signal.
         if mean_diff >= bo_perc and BREAKOUT and BO_possible:
-            # print "Break out signal"
+            logging.info("Break out signal")
             return True
         # Price has to break below the mean to trigger a long RTM signal.
         elif mean_diff <= rtm_perc and RTM:
-            # print "Reversion to the mean signal"
+            logging.info("Reversion to the mean signal")
             return True
         return False
     except Exception as e:
-        print("failed at buySignaled")
-        print(str(e))
+        logging.info("failed at buySignaled")
+        logging.info(str(e))
 
 
 def getBestSellRate(candle_close_rate):
@@ -302,22 +303,22 @@ def getBestSellRate(candle_close_rate):
                 sellorderbook['Rate'] <= upper_buy_price_bound]
             sellorderbook = sellorderbook[
                 sellorderbook['Rate'] >= lower_buy_price_bound]
-            # print sellorderbook
+            # logging.info(sellorderbook)
         if not sellorderbook.empty:
             # filter out price levels that can fully fill our order size
             sellorderbook = sellorderbook[sellorderbook['Quantity'] >= QUANTITY]
-            # print sellorderbook
+            logging.info(sellorderbook)
         if not sellorderbook.empty:
             sellorderbook = sellorderbook.reset_index()
             best_sell_rate = sellorderbook['Rate'][0]
-            # print sellorderbook
-            print "best sell rate:", best_sell_rate
-            print 'Slippage should be about:', (1 - (candle_close_rate / best_sell_rate)) * 100, "%"
+            # logging.info(sellorderbook)
+            logging.info("best sell rate: {}".format(best_sell_rate))
+            logging.info('Slippage should be about: {}%'.format( (1 - (candle_close_rate / best_sell_rate)) * 100))
             return best_sell_rate
-        print "available prices out of BOUND"
+        logging.info("available prices out of BOUND")
     except Exception as e:
-        print("failed at getBestSellRate")
-        print(str(e))
+        logging.info("failed at getBestSellRate")
+        logging.info(str(e))
 
 
 def getBestBuyRate(candle_close_rate):
@@ -334,21 +335,21 @@ def getBestBuyRate(candle_close_rate):
                 buyorderbook['Rate'] <= upper_sell_price_bound]
             buyorderbook = buyorderbook[
                 buyorderbook['Rate'] >= lower_sell_price_bound]
-            # print buyorderbook
+            # logging.info(buyorderbook)
         if not buyorderbook.empty:
             # filter out price levels that can fully fill our order size
             buyorderbook = buyorderbook[buyorderbook['Quantity'] >= QUANTITY]
-            # print buyorderbook
+            # logging.info(buyorderbook)
         if not buyorderbook.empty:
             buyorderbook = buyorderbook.reset_index()
             best_buy_rate = buyorderbook['Rate'][0]
-            print "best buy rate:", best_buy_rate
-            print 'Slippage should be about:', (1 - (candle_close_rate / best_buy_rate)) * 100, "%"
+            logging.info("best buy rate: {}".format(best_buy_rate))
+            logging.info('Slippage should be about: {}%'.format( str(1 - (candle_close_rate / best_buy_rate) ) * 100) )
             return best_buy_rate
-        print "available prices out of BOUND"
+        logging.info("available prices out of BOUND")
     except Exception as e:
-        print("failed at getBestBuyRate")
-        print(str(e))
+        logging.info("failed at getBestBuyRate")
+        logging.info(str(e))
 
 
 def getPricePoints():
@@ -357,30 +358,30 @@ def getPricePoints():
         df = getMarketPrices(MARKET, TF)
         if len(df) < MEAN:
             df = getBars(MARKET, TF)
-            print "Using API 2 for data retrieval:", len(df)
+            logging.info("Using API 2 for data retrieval: {}".format(len(df)))
         df['ma'] = df['close'].rolling(MEAN).mean()
         candle_close_rate = df['close'][-1]
         ma = df['ma'][-1]
         return candle_close_rate, ma
     except Exception as e:
-        print("failed at getPricePoints")
-        print(str(e))
+        logging.info("failed at getPricePoints")
+        logging.info(str(e))
 
 
 def checkStop(candle_close_rate):
     try:
-        print "Check if stop level is hit."
+        logging.info("Check if stop level is hit.")
         open_orders = API.getopenorders(MARKET)
         if open_orders and open_orders[0]['OrderType'] == 'LIMIT_SELL':
             sell_limit_price = open_orders[0]['Limit']
             entry_price = sell_limit_price / (1.0 + (EXIT_PERCENT / 100.0))
             stop_rate = entry_price * (1.0 - (STOP_PERC / 100.0))
             if candle_close_rate <= stop_rate:
-                print "price went below our stop rate"
-                print "cancelling current sell limit"
+                logging.info("price went below our stop rate")
+                logging.info("cancelling current sell limit")
                 API.cancel(open_orders[0]['OrderUuid'])
                 time.sleep(3)
-                print "placing a new sell limit at stop level"
+                logging.info("placing a new sell limit at stop level")
                 avail_balance = API.getbalance(CURRENCY)['Available']
                 bestprice = getBestBuyRate(candle_close_rate)
                 if not bestprice:
@@ -388,12 +389,12 @@ def checkStop(candle_close_rate):
                 selllimit = API.selllimit(
                     MARKET, avail_balance, bestprice)
                 if 'uuid' in selllimit:
-                    print "selllimit placed. Price: {}, Units: {}".format(bestprice, avail_balance)
+                    logging.info("selllimit placed. Price: {}, Units: {}".format(bestprice, avail_balance))
                 else:
-                    print "selllimit failed"
+                    logging.info("selllimit failed")
     except Exception as e:
-        print("failed at checkStop")
-        print(str(e))
+        logging.info("failed at checkStop")
+        logging.info(str(e))
 
 
 def enterLong(candle_close_rate):
@@ -401,50 +402,50 @@ def enterLong(candle_close_rate):
         best_sell_rate = getBestSellRate(candle_close_rate)
         if best_sell_rate is not None:
             buylimit = API.buylimit(MARKET, QUANTITY, best_sell_rate)
-            print buylimit
+            logging.info(buylimit)
             if 'uuid' in buylimit:
-                print "buylimit succesfully placed"
+                logging.info("buylimit succesfully placed")
 
-                print "Checking position"
+                logging.info("Checking position")
                 if weAreLong(3):
                     entry = candle_close_rate
-                    print "Long position is confirmed"
-                    print "Placing sell limit"
+                    logging.info("Long position is confirmed")
+                    logging.info("Placing sell limit")
                     try:
                         selllimit = API.selllimit(
                             MARKET, QUANTITY, best_sell_rate * (1.0 + (EXIT_PERCENT / 100.0)))
                     except:
-                        print "failed at enterLong while placing sell limit"
+                        logging.info("failed at enterLong while placing sell limit")
                         selllimit = {}
                     if 'uuid' in selllimit:
-                        print "Sell limit succesfully placed"
+                        logging.info("Sell limit succesfully placed")
                         if weAreCovered(3):
                             open_orders = API.getopenorders(MARKET)
-                            print "Open orders"
-                            print open_orders
+                            logging.info("Open orders")
+                            logging.info(open_orders)
                     else:
-                        print "no selluuid"
+                        logging.info("no selluuid")
                 else:
-                    print "We are not long, need to cancel buy limit"
+                    logging.info("We are not long, need to cancel buy limit")
                     try:
                         buy_limit_cancel = API.cancel(buylimit['uuid'])
-                        print buy_limit_cancel
+                        logging.info(buy_limit_cancel)
                     except:
-                        print "failed at enterLong while cancelling buylimit order"
+                        logging.info("failed at enterLong while cancelling buylimit order")
             else:
-                print "could not get uuid for buylimit"
-                print "could be tst buy failed. If not we will place sell limit at next candle close"
+                logging.info("could not get uuid for buylimit")
+                logging.info("could be tst buy failed. If not we will place sell limit at next candle close")
     except Exception as e:
-        print("failed at enterLong")
-        print(str(e))
+        logging.info("failed at enterLong")
+        logging.info(str(e))
 
 
 def manageTrade(candle_close_rate):
     try:
-        print "Do some trade management on a long position"
+        logging.info("Do some trade management on a long position")
         if not weAreCovered():
-            print "we have a long position without a corresponding sell limit"
-            print "let's set a sell limit for the available balance at target level"
+            logging.info("we have a long position without a corresponding sell limit")
+            logging.info("let's set a sell limit for the available balance at target level")
             orderhistory = API.getorderhistory(MARKET)
             if orderhistory and orderhistory[0]['OrderType'] == 'LIMIT_BUY':
                 avail_balance = API.getbalance(CURRENCY)['Available']
@@ -453,14 +454,14 @@ def manageTrade(candle_close_rate):
                 sellimit = API.selllimit(
                     MARKET, avail_balance, targetprice)
             else:
-                print "get out at best current price"
+                logging.info("get out at best current price")
                 bestprice = getBestBuyRate(candle_close_rate)
                 sellimit = API.selllimit(
                     MARKET, avail_balance, bestprice)
         checkStop(candle_close_rate)
     except Exception as e:
-        print("failed at manageTrade")
-        print(str(e))
+        logging.info("failed at manageTrade")
+        logging.info(str(e))
 
 def trade():
     t = datetime.datetime.now()
@@ -469,8 +470,8 @@ def trade():
     elif TF == 5 or TF == 30 or TF == 60:
         time.sleep(((TF - t.minute % TF - 1) * 60) + (60 - t.second))
     else:
-        print "Timeframe not supported for syncing."
-        print "1, 5, 30 and 60 min timeframe is supported for syncing."
+        logging.info("Timeframe not supported for syncing.")
+        logging.info("1, 5, 30 and 60 min timeframe is supported for syncing.")
     entry = None
     selluuid = None
     PRICE_DIPPED = False
@@ -479,9 +480,10 @@ def trade():
     while True:
         start = time.time()
         ### TRADE BEGIN ###
+        logging.info(">>>")
         try:
             print ">>>", datetime.datetime.now()
-            print "{} on {} min".format(MARKET, TF)
+            logging.info("{} on {} min".format(MARKET, TF))
             candle_close_rate, ma = getPricePoints()
             if BTC_QUANTITY:
                 QUANTITY = BTC_QUANTITY / candle_close_rate
@@ -496,7 +498,7 @@ def trade():
                 PRICE_DIPPED = False
             ### TRADE END ###
             processing_time = time.time() - start
-            print "processing_time", processing_time
+            logging.info("processing_time: {}".format(processing_time))
             # resyncing candle time
             t = datetime.datetime.now()
             if TF == 1:
@@ -504,13 +506,15 @@ def trade():
             elif TF == 5 or TF == 30 or TF == 60:
                 time.sleep(((TF - t.minute % TF - 1) * 60) + (60 - t.second))
             else:
-                print "Timeframe not supported for syncing."
-                print "1, 5, 30 and 60 min timeframe is supported for syncing."
-                print "timing based on processing time"
+                logging.info("Timeframe not supported for syncing.")
+                logging.info("1, 5, 30 and 60 min timeframe is supported for syncing.")
+                logging.info("timing based on processing time")
                 time.sleep((TF * 60) - processing_time)
         except Exception as e:
-            print("Something went wrong in the trade loop")
-            print(str(e))
+            logging.info("Something went wrong in the trade loop")
+            logging.info(str(e))
+            processing_time = time.time() - start
+            time.sleep((TF * 60) - processing_time)
         # do some garbage collection
         gc.collect()
 
@@ -544,12 +548,15 @@ if __name__ == "__main__":
     # Get API key and secret from https://bittrex.com/Account/ManageApiKey
     API = bittrex(KEY, SECRET)
     MARKET = '{0}-{1}'.format(TRADE, CURRENCY)
-
+    logging.basicConfig(filename="{}.log".format(MARKET),
+                        format='%(asctime)s %(levelname)s %(message)s',
+                        level=logging.INFO)
     if BACKTESTFILE != "":
         if cache:
             backtest(True)
         else:
             backtest(False)
     else:
-        print "let's trade {}".format(MARKET)
+        logging.info("let's trade {}".format(MARKET))
+        print ("let's trade {}".format(MARKET))
         trade()
