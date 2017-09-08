@@ -42,29 +42,33 @@ def getBars(market, interval=5, latest=False):
     """Well return historical data from the bittrex api V2.0
     as a dataframe where index is datetime and field returned are
     close, high, low, open and volume."""
-    tf = {3600: 'day',
-          60: 'hour',
-          30: 'thirtyMin',
-          5: 'fiveMin',
-          1:  'oneMin'}
-    # Get prices using PUBLIC API V2.0
-    if latest:
-        url = 'https://bittrex.com/Api/v2.0/pub/market/GetLatestTick?marketName={}&tickInterval={}'.format(market, tf[
-                                                                                                           interval])
-    else:
-        url = 'https://bittrex.com/Api/v2.0/pub/market/GetTicks?marketName={}&tickInterval={}'.format(market, tf[
-                                                                                                      interval])
-    response = requests.get(url).json()
-    datadf = pd.DataFrame(response['result'])
-    datadf['datetime'] = pd.to_datetime(datadf['T'])
-    datadf = datadf.set_index('datetime')
-    del datadf['T']
-    del datadf['BV']
-    del datadf['V']
-    datadf.columns = ['close', 'high', 'low', 'open']
-    if BACKTESTFILE != "":
-        return datadf
-    return datadf.tail(MEAN)
+    try:
+        tf = {3600: 'day',
+              60: 'hour',
+              30: 'thirtyMin',
+              5: 'fiveMin',
+              1:  'oneMin'}
+        # Get prices using PUBLIC API V2.0
+        if latest:
+            url = 'https://bittrex.com/Api/v2.0/pub/market/GetLatestTick?marketName={}&tickInterval={}'.format(market, tf[
+                                                                                                               interval])
+        else:
+            url = 'https://bittrex.com/Api/v2.0/pub/market/GetTicks?marketName={}&tickInterval={}'.format(market, tf[
+                                                                                                          interval])
+        response = requests.get(url).json()
+        datadf = pd.DataFrame(response['result'])
+        datadf['datetime'] = pd.to_datetime(datadf['T'])
+        datadf = datadf.set_index('datetime')
+        del datadf['T']
+        del datadf['BV']
+        del datadf['V']
+        datadf.columns = ['close', 'high', 'low', 'open']
+        if BACKTESTFILE != "":
+            return datadf
+        return datadf.tail(MEAN)
+    except Exception as e:
+        print("failed at getBars")
+        print(str(e))
 
 
 def getLatestBar(market, interval):
@@ -196,229 +200,267 @@ def backtest(cache):
                     EXIT_PERCENT,
                     STOP_PERC,
                     sharpe_ratio)
-    # plt.show()
+    plt.show()
 
 
 def getMarketPrices(market, interval):
     """Will return a df with timestamp and resampled ohlc prices
     Input market and interval in minutes: 1, 5, 30, 60, 3600"""
-    tf = {3600: '3600Min',
-          60: '60Min',
-          30: '30Min',
-          5: '5Min',
-          1:  '1Min'}
-    history = API.getmarkethistory(MARKET)
-    df = pd.DataFrame(history)
-    df.index = pd.to_datetime(df['TimeStamp'])
-    prices = df['Price'].resample(tf[interval]).ohlc()
-    if BACKTESTFILE != "":
-        return prices.dropna()
-    return prices.dropna().tail(MEAN)
-
+    try:
+        tf = {3600: '3600Min',
+              60: '60Min',
+              30: '30Min',
+              5: '5Min',
+              1:  '1Min'}
+        history = API.getmarkethistory(MARKET)
+        df = pd.DataFrame(history)
+        df.index = pd.to_datetime(df['TimeStamp'])
+        prices = df['Price'].resample(tf[interval]).ohlc()
+        if BACKTESTFILE != "":
+            return prices.dropna()
+        return prices.dropna().tail(MEAN)
+    except Exception as e:
+        print("failed at getMarketPrices")
+        print(str(e))
 
 def weAreLong(retries=1, delay=3):
-    # Determine we are already long or not
-    # if we have balance we are long
-    count = 0
-    while count < retries:
-        balance = API.getbalance(CURRENCY)
-        if not (balance['Balance'] == None or balance['Balance'] == 0.0):
-            print "we are long"
-            return True
-        count += 1
-        if retries != 1:
-            time.sleep(delay)
-            print "Checking again if we are long"
-    return False
-
+    try:
+        # Determine we are already long or not
+        # if we have balance we are long
+        count = 0
+        while count < retries:
+            balance = API.getbalance(CURRENCY)
+            if not (balance['Balance'] == None or balance['Balance'] == 0.0):
+                print "we are long"
+                return True
+            count += 1
+            if retries != 1:
+                time.sleep(delay)
+                print "Checking again if we are long"
+        return False
+    except Exception as e:
+        print("failed at weAreLong")
+        print(str(e))
 
 def weAreCovered(retries=1, delay=3):
-    # Determine we have zero available balance
-    # if we have zero avail balance we are covered
-    count = 0
-    while count < retries:
-        balance = API.getbalance(CURRENCY)
-        if balance['Available'] == None or balance['Available'] == 0.0:
-            print "we are covered"
-            return True
-        else:
-            print "we are not covered"
-        count += 1
-        if retries != 1:
-            time.sleep(delay)
-            print "Checking again if we are covered"
-    return False
+    try:
+        # Determine we have zero available balance
+        # if we have zero avail balance we are covered
+        count = 0
+        while count < retries:
+            balance = API.getbalance(CURRENCY)
+            if balance['Available'] == None or balance['Available'] == 0.0:
+                print "we are covered"
+                return True
+            else:
+                print "we are not covered"
+            count += 1
+            if retries != 1:
+                time.sleep(delay)
+                print "Checking again if we are covered"
+        return False
+    except Exception as e:
+        print("failed at weAreCovered")
+        print(str(e))
 
 
 def buySignaled(candle_close_rate, ma, BO_possible):
-    mean_diff = candle_close_rate / ma
-    # print "candle close rate:", candle_close_rate
-    # print "moving avarage price:", ma
-    # print "Mean difference:", mean_diff
-    rtm_perc = (100.0 - RTM_PERCENT) / 100.0
-    bo_perc = (100.0 + BO_PERCENT) / 100.0
-    rtm_perc_max = (100.0 - RTM_PERCENT + LOWER_SIGNAL_BOUND) / 100.0
-    bo_perc_max = (100.0 + BO_PERCENT + UPPER_SIGNAL_BOUND) / 100.0
-    # Price has to above below the mean to trigger a long BO signal.
-    if mean_diff >= bo_perc and BREAKOUT and BO_possible:
-        # print "Break out signal"
-        return True
-    # Price has to break below the mean to trigger a long RTM signal.
-    elif mean_diff <= rtm_perc and RTM:
-        # print "Reversion to the mean signal"
-        return True
-    return False
+    try:
+        mean_diff = candle_close_rate / ma
+        # print "candle close rate:", candle_close_rate
+        # print "moving avarage price:", ma
+        # print "Mean difference:", mean_diff
+        rtm_perc = (100.0 - RTM_PERCENT) / 100.0
+        bo_perc = (100.0 + BO_PERCENT) / 100.0
+        rtm_perc_max = (100.0 - RTM_PERCENT + LOWER_SIGNAL_BOUND) / 100.0
+        bo_perc_max = (100.0 + BO_PERCENT + UPPER_SIGNAL_BOUND) / 100.0
+        # Price has to above below the mean to trigger a long BO signal.
+        if mean_diff >= bo_perc and BREAKOUT and BO_possible:
+            # print "Break out signal"
+            return True
+        # Price has to break below the mean to trigger a long RTM signal.
+        elif mean_diff <= rtm_perc and RTM:
+            # print "Reversion to the mean signal"
+            return True
+        return False
+    except Exception as e:
+        print("failed at buySignaled")
+        print(str(e))
 
 
 def getBestSellRate(candle_close_rate):
-    sellorderbook = pd.DataFrame(API.getorderbook(MARKET, 'sell'))
-    if not sellorderbook.empty:
-        # filter out price levels that are within our set upper and lower
-        # bounds
-        lower_buy_price_bound = candle_close_rate * \
-            (100.0 - LOWER_BUY_BOUND) / 100.0
-        upper_buy_price_bound = candle_close_rate * \
-            (100.0 + UPPER_BUY_BOUND) / 100.0
-        sellorderbook = sellorderbook[
-            sellorderbook['Rate'] <= upper_buy_price_bound]
-        sellorderbook = sellorderbook[
-            sellorderbook['Rate'] >= lower_buy_price_bound]
-        # print sellorderbook
-    if not sellorderbook.empty:
-        # filter out price levels that can fully fill our order size
-        sellorderbook = sellorderbook[sellorderbook['Quantity'] >= QUANTITY]
-        # print sellorderbook
-    if not sellorderbook.empty:
-        sellorderbook = sellorderbook.reset_index()
-        best_sell_rate = sellorderbook['Rate'][0]
-        # print sellorderbook
-        print "best sell rate:", best_sell_rate
-        print 'Slippage should be about:', (1 - (candle_close_rate / best_sell_rate)) * 100, "%"
-        return best_sell_rate
-    print "available prices out of BOUND"
+    try:
+        sellorderbook = pd.DataFrame(API.getorderbook(MARKET, 'sell'))
+        if not sellorderbook.empty:
+            # filter out price levels that are within our set upper and lower
+            # bounds
+            lower_buy_price_bound = candle_close_rate * \
+                (100.0 - LOWER_BUY_BOUND) / 100.0
+            upper_buy_price_bound = candle_close_rate * \
+                (100.0 + UPPER_BUY_BOUND) / 100.0
+            sellorderbook = sellorderbook[
+                sellorderbook['Rate'] <= upper_buy_price_bound]
+            sellorderbook = sellorderbook[
+                sellorderbook['Rate'] >= lower_buy_price_bound]
+            # print sellorderbook
+        if not sellorderbook.empty:
+            # filter out price levels that can fully fill our order size
+            sellorderbook = sellorderbook[sellorderbook['Quantity'] >= QUANTITY]
+            # print sellorderbook
+        if not sellorderbook.empty:
+            sellorderbook = sellorderbook.reset_index()
+            best_sell_rate = sellorderbook['Rate'][0]
+            # print sellorderbook
+            print "best sell rate:", best_sell_rate
+            print 'Slippage should be about:', (1 - (candle_close_rate / best_sell_rate)) * 100, "%"
+            return best_sell_rate
+        print "available prices out of BOUND"
+    except Exception as e:
+        print("failed at getBestSellRate")
+        print(str(e))
 
 
 def getBestBuyRate(candle_close_rate):
-    buyorderbook = pd.DataFrame(API.getorderbook(MARKET, 'buy'))
-    if not buyorderbook.empty:
-        # filter out price levels that are within our set upper and lower
-        # bounds
-        lower_sell_price_bound = candle_close_rate * \
-            (100.0 - LOWER_SELL_BOUND) / 100.0
-        upper_sell_price_bound = candle_close_rate * \
-            (100.0 + UPPER_SELL_BOUND) / 100.0
-        buyorderbook = buyorderbook[
-            buyorderbook['Rate'] <= upper_sell_price_bound]
-        buyorderbook = buyorderbook[
-            buyorderbook['Rate'] >= lower_sell_price_bound]
-        # print buyorderbook
-    if not buyorderbook.empty:
-        # filter out price levels that can fully fill our order size
-        buyorderbook = buyorderbook[buyorderbook['Quantity'] >= QUANTITY]
-        # print buyorderbook
-    if not buyorderbook.empty:
-        buyorderbook = buyorderbook.reset_index()
-        best_buy_rate = buyorderbook['Rate'][0]
-        print "best buy rate:", best_buy_rate
-        print 'Slippage should be about:', (1 - (candle_close_rate / best_buy_rate)) * 100, "%"
-        return best_buy_rate
-    print "available prices out of BOUND"
+    try:
+        buyorderbook = pd.DataFrame(API.getorderbook(MARKET, 'buy'))
+        if not buyorderbook.empty:
+            # filter out price levels that are within our set upper and lower
+            # bounds
+            lower_sell_price_bound = candle_close_rate * \
+                (100.0 - LOWER_SELL_BOUND) / 100.0
+            upper_sell_price_bound = candle_close_rate * \
+                (100.0 + UPPER_SELL_BOUND) / 100.0
+            buyorderbook = buyorderbook[
+                buyorderbook['Rate'] <= upper_sell_price_bound]
+            buyorderbook = buyorderbook[
+                buyorderbook['Rate'] >= lower_sell_price_bound]
+            # print buyorderbook
+        if not buyorderbook.empty:
+            # filter out price levels that can fully fill our order size
+            buyorderbook = buyorderbook[buyorderbook['Quantity'] >= QUANTITY]
+            # print buyorderbook
+        if not buyorderbook.empty:
+            buyorderbook = buyorderbook.reset_index()
+            best_buy_rate = buyorderbook['Rate'][0]
+            print "best buy rate:", best_buy_rate
+            print 'Slippage should be about:', (1 - (candle_close_rate / best_buy_rate)) * 100, "%"
+            return best_buy_rate
+        print "available prices out of BOUND"
+    except Exception as e:
+        print("failed at getBestBuyRate")
+        print(str(e))
 
 
 def getPricePoints():
-    # get prices and calculte rolling mean.
-    df = getMarketPrices(MARKET, TF)
-    if len(df) < MEAN:
-        df = getBars(MARKET, TF)
-        print "Using API 2 for data retrieval:", len(df)
-    df['ma'] = df['close'].rolling(MEAN).mean()
-    candle_close_rate = df['close'][-1]
-    ma = df['ma'][-1]
-    return candle_close_rate, ma
+    try:
+        # get prices and calculte rolling mean.
+        df = getMarketPrices(MARKET, TF)
+        if len(df) < MEAN:
+            df = getBars(MARKET, TF)
+            print "Using API 2 for data retrieval:", len(df)
+        df['ma'] = df['close'].rolling(MEAN).mean()
+        candle_close_rate = df['close'][-1]
+        ma = df['ma'][-1]
+        return candle_close_rate, ma
+    except Exception as e:
+        print("failed at getPricePoints")
+        print(str(e))
 
 
 def checkStop(candle_close_rate):
-    print "Check if stop level is hit."
-    open_orders = API.getopenorders(MARKET)
-    if open_orders and open_orders[0]['OrderType'] == 'LIMIT_SELL':
-        sell_limit_price = open_orders[0]['Limit']
-        entry_price = sell_limit_price / (1.0 + (EXIT_PERCENT / 100.0))
-        stop_rate = entry_price * (1.0 - (STOP_PERC / 100.0))
-        if candle_close_rate <= stop_rate:
-            print "price went below our stop rate"
-            print "cancelling current sell limit"
-            API.cancel(open_orders[0]['OrderUuid'])
-            time.sleep(3)
-            print "placing a new sell limit at stop level"
-            avail_balance = API.getbalance(CURRENCY)['Available']
-            bestprice = getBestBuyRate(candle_close_rate)
-            if not bestprice:
-                bestprice = candle_close_rate
-            selllimit = API.selllimit(
-                MARKET, avail_balance, bestprice)
-            if 'uuid' in selllimit:
-                print "selllimit placed. Price: {}, Units: {}".format(bestprice, avail_balance)
-            else:
-                print "selllimit failed"
+    try:
+        print "Check if stop level is hit."
+        open_orders = API.getopenorders(MARKET)
+        if open_orders and open_orders[0]['OrderType'] == 'LIMIT_SELL':
+            sell_limit_price = open_orders[0]['Limit']
+            entry_price = sell_limit_price / (1.0 + (EXIT_PERCENT / 100.0))
+            stop_rate = entry_price * (1.0 - (STOP_PERC / 100.0))
+            if candle_close_rate <= stop_rate:
+                print "price went below our stop rate"
+                print "cancelling current sell limit"
+                API.cancel(open_orders[0]['OrderUuid'])
+                time.sleep(3)
+                print "placing a new sell limit at stop level"
+                avail_balance = API.getbalance(CURRENCY)['Available']
+                bestprice = getBestBuyRate(candle_close_rate)
+                if not bestprice:
+                    bestprice = candle_close_rate
+                selllimit = API.selllimit(
+                    MARKET, avail_balance, bestprice)
+                if 'uuid' in selllimit:
+                    print "selllimit placed. Price: {}, Units: {}".format(bestprice, avail_balance)
+                else:
+                    print "selllimit failed"
+    except Exception as e:
+        print("failed at checkStop")
+        print(str(e))
 
 
 def enterLong(candle_close_rate):
-    best_sell_rate = getBestSellRate(candle_close_rate)
-    if best_sell_rate is not None:
-        buylimit = API.buylimit(MARKET, QUANTITY, best_sell_rate)
-        print buylimit
-        if 'uuid' in buylimit:
-            print "buylimit succesfully placed"
+    try:
+        best_sell_rate = getBestSellRate(candle_close_rate)
+        if best_sell_rate is not None:
+            buylimit = API.buylimit(MARKET, QUANTITY, best_sell_rate)
+            print buylimit
+            if 'uuid' in buylimit:
+                print "buylimit succesfully placed"
 
-            print "Checking position"
-            if weAreLong(3):
-                entry = candle_close_rate
-                print "Long position is confirmed"
-                print "Placing sell limit"
-                try:
-                    selllimit = API.selllimit(
-                        MARKET, QUANTITY, best_sell_rate * (1.0 + (EXIT_PERCENT / 100.0)))
-                except:
-                    print "failed at enterLong while placing sell limit"
-                    selllimit = {}
-                if 'uuid' in selllimit:
-                    print "Sell limit succesfully placed"
-                    if weAreCovered(3):
-                        open_orders = API.getopenorders(MARKET)
-                        print "Open orders"
-                        print open_orders
+                print "Checking position"
+                if weAreLong(3):
+                    entry = candle_close_rate
+                    print "Long position is confirmed"
+                    print "Placing sell limit"
+                    try:
+                        selllimit = API.selllimit(
+                            MARKET, QUANTITY, best_sell_rate * (1.0 + (EXIT_PERCENT / 100.0)))
+                    except:
+                        print "failed at enterLong while placing sell limit"
+                        selllimit = {}
+                    if 'uuid' in selllimit:
+                        print "Sell limit succesfully placed"
+                        if weAreCovered(3):
+                            open_orders = API.getopenorders(MARKET)
+                            print "Open orders"
+                            print open_orders
+                    else:
+                        print "no selluuid"
                 else:
-                    print "no selluuid"
+                    print "We are not long, need to cancel buy limit"
+                    try:
+                        buy_limit_cancel = API.cancel(buylimit['uuid'])
+                        print buy_limit_cancel
+                    except:
+                        print "failed at enterLong while cancelling buylimit order"
             else:
-                print "We are not long, need to cancel buy limit"
-                try:
-                    buy_limit_cancel = API.cancel(buylimit['uuid'])
-                    print buy_limit_cancel
-                except:
-                    print "failed at enterLong while cancelling buylimit order"
-        else:
-            print "could not get uuid for buylimit"
-            print "could be tst buy failed. If not we will place sell limit at next candle close"
+                print "could not get uuid for buylimit"
+                print "could be tst buy failed. If not we will place sell limit at next candle close"
+    except Exception as e:
+        print("failed at enterLong")
+        print(str(e))
+
 
 def manageTrade(candle_close_rate):
-    print "Do some trade management on a long position"
-    if not weAreCovered():
-        print "we have a long position without a corresponding sell limit"
-        print "let's set a sell limit for the available balance at target level"
-        orderhistory = API.getorderhistory(MARKET)
-        if orderhistory and orderhistory[0]['OrderType'] == 'LIMIT_BUY':
-            avail_balance = API.getbalance(CURRENCY)['Available']
-            buy_limit_price = orderhistory[0]['Limit']
-            targetprice = buy_limit_price * (1.0 + (EXIT_PERCENT / 100.0))
-            sellimit = API.selllimit(
-                MARKET, avail_balance, targetprice)
-        else:
-            print "get out at best current price"
-            bestprice = getBestBuyRate(candle_close_rate)
-            sellimit = API.selllimit(
-                MARKET, avail_balance, bestprice)
-    checkStop(candle_close_rate)
-
+    try:
+        print "Do some trade management on a long position"
+        if not weAreCovered():
+            print "we have a long position without a corresponding sell limit"
+            print "let's set a sell limit for the available balance at target level"
+            orderhistory = API.getorderhistory(MARKET)
+            if orderhistory and orderhistory[0]['OrderType'] == 'LIMIT_BUY':
+                avail_balance = API.getbalance(CURRENCY)['Available']
+                buy_limit_price = orderhistory[0]['Limit']
+                targetprice = buy_limit_price * (1.0 + (EXIT_PERCENT / 100.0))
+                sellimit = API.selllimit(
+                    MARKET, avail_balance, targetprice)
+            else:
+                print "get out at best current price"
+                bestprice = getBestBuyRate(candle_close_rate)
+                sellimit = API.selllimit(
+                    MARKET, avail_balance, bestprice)
+        checkStop(candle_close_rate)
+    except Exception as e:
+        print("failed at manageTrade")
+        print(str(e))
 
 def trade():
     t = datetime.datetime.now()
@@ -437,34 +479,38 @@ def trade():
     while True:
         start = time.time()
         ### TRADE BEGIN ###
-        print ">>>", datetime.datetime.now()
-        print "{} on {} min".format(MARKET, TF)
-        candle_close_rate, ma = getPricePoints()
-        if BTC_QUANTITY:
-            QUANTITY = BTC_QUANTITY / candle_close_rate
-        we_are_long = weAreLong()
-        if not we_are_long and buySignaled(candle_close_rate, ma, PRICE_DIPPED):
-            enterLong(candle_close_rate)
-        elif we_are_long:
-            manageTrade(candle_close_rate)
-        if candle_close_rate < ma:
-            PRICE_DIPPED = True
-        else:
-            PRICE_DIPPED = False
-        ### TRADE END ###
-        processing_time = time.time() - start
-        print "processing_time", processing_time
-        # resyncing candle time
-        t = datetime.datetime.now()
-        if TF == 1:
-            time.sleep((TF * 60) - t.second)
-        elif TF == 5 or TF == 30 or TF == 60:
-            time.sleep(((TF - t.minute % TF - 1) * 60) + (60 - t.second))
-        else:
-            print "Timeframe not supported for syncing."
-            print "1, 5, 30 and 60 min timeframe is supported for syncing."
-            print "timing based on processing time"
-            time.sleep((TF * 60) - processing_time)
+        try:
+            print ">>>", datetime.datetime.now()
+            print "{} on {} min".format(MARKET, TF)
+            candle_close_rate, ma = getPricePoints()
+            if BTC_QUANTITY:
+                QUANTITY = BTC_QUANTITY / candle_close_rate
+            we_are_long = weAreLong()
+            if not we_are_long and buySignaled(candle_close_rate, ma, PRICE_DIPPED):
+                enterLong(candle_close_rate)
+            elif we_are_long:
+                manageTrade(candle_close_rate)
+            if candle_close_rate < ma:
+                PRICE_DIPPED = True
+            else:
+                PRICE_DIPPED = False
+            ### TRADE END ###
+            processing_time = time.time() - start
+            print "processing_time", processing_time
+            # resyncing candle time
+            t = datetime.datetime.now()
+            if TF == 1:
+                time.sleep((TF * 60) - t.second)
+            elif TF == 5 or TF == 30 or TF == 60:
+                time.sleep(((TF - t.minute % TF - 1) * 60) + (60 - t.second))
+            else:
+                print "Timeframe not supported for syncing."
+                print "1, 5, 30 and 60 min timeframe is supported for syncing."
+                print "timing based on processing time"
+                time.sleep((TF * 60) - processing_time)
+        except Exception as e:
+            print("Something went wrong in the trade loop")
+            print(str(e))
         # do some garbage collection
         gc.collect()
 
