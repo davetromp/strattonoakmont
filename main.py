@@ -548,7 +548,7 @@ if __name__ == "__main__":
     # Get API key and secret from https://bittrex.com/Account/ManageApiKey
     API = bittrex(KEY, SECRET)
     MARKET = '{0}-{1}'.format(TRADE, CURRENCY)
-    logging.basicConfig(filename="{}.log".format(MARKET),
+    logging.basicConfig(filename="logs/{}.log".format(MARKET),
                         format='%(asctime)s %(levelname)s %(message)s',
                         level=logging.INFO)
     if BACKTESTFILE != "":
