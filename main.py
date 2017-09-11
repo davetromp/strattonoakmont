@@ -401,6 +401,12 @@ def enterLong(candle_close_rate):
     try:
         best_sell_rate = getBestSellRate(candle_close_rate)
         if best_sell_rate is not None:
+            logging.info("Placing buy limit for {} tokens of market {} at {} for a total of {} BTC".format(
+                QUANTITY,
+                MARKET,
+                best_sell_rate,
+                QUANTITY * best_sell_rate
+            ))
             buylimit = API.buylimit(MARKET, QUANTITY, best_sell_rate)
             logging.info(buylimit)
             if 'uuid' in buylimit:
