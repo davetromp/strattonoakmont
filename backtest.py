@@ -57,7 +57,7 @@ if __name__ == "__main__":
                 base = base[1:]
                 configfile = base + ".config"
                 try:
-                    copyfile("configs/" + configfile, "active/" +configfile)
+                    copyfile("configs/" + configfile, "active/" +configfile.split("_")[0]+".config")
                 except Exception as e:
                     print str(e)
                 plotfile = base + ".png"
