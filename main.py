@@ -68,8 +68,8 @@ def getBars(market, interval=5, latest=False):
             return datadf
         return datadf.tail(MEAN)
     except Exception as e:
-        logging.info("failed at getBars")
-        logging.info(str(e))
+        logging.error("failed at getBars")
+        logging.error(str(e))
 
 
 def getLatestBar(market, interval):
@@ -221,8 +221,8 @@ def getMarketPrices(market, interval):
             return prices.dropna()
         return prices.dropna().tail(MEAN)
     except Exception as e:
-        logging.info("failed at getMarketPrices")
-        logging.info(str(e))
+        logging.error("failed at getMarketPrices")
+        logging.error(str(e))
 
 def weAreLong(retries=1, delay=3):
     try:
@@ -240,8 +240,8 @@ def weAreLong(retries=1, delay=3):
                 logging.info("Checking again if we are long")
         return False
     except Exception as e:
-        logging.info("failed at weAreLong")
-        logging.info(str(e))
+        logging.error("failed at weAreLong")
+        logging.error(str(e))
 
 def weAreCovered(retries=1, delay=3):
     try:
@@ -261,8 +261,8 @@ def weAreCovered(retries=1, delay=3):
                 logging.info("Checking again if we are covered")
         return False
     except Exception as e:
-        logging.info("failed at weAreCovered")
-        logging.info(str(e))
+        logging.error("failed at weAreCovered")
+        logging.error(str(e))
 
 
 def buySignaled(candle_close_rate, ma, BO_possible):
@@ -285,8 +285,8 @@ def buySignaled(candle_close_rate, ma, BO_possible):
             return True
         return False
     except Exception as e:
-        logging.info("failed at buySignaled")
-        logging.info(str(e))
+        logging.error("failed at buySignaled")
+        logging.error(str(e))
 
 
 def getBestSellRate(candle_close_rate):
@@ -317,8 +317,8 @@ def getBestSellRate(candle_close_rate):
             return best_sell_rate
         logging.info("available prices out of BOUND")
     except Exception as e:
-        logging.info("failed at getBestSellRate")
-        logging.info(str(e))
+        logging.error("failed at getBestSellRate")
+        logging.error(str(e))
 
 
 def getBestBuyRate(candle_close_rate):
@@ -348,8 +348,8 @@ def getBestBuyRate(candle_close_rate):
             return best_buy_rate
         logging.info("available prices out of BOUND")
     except Exception as e:
-        logging.info("failed at getBestBuyRate")
-        logging.info(str(e))
+        logging.error("failed at getBestBuyRate")
+        logging.error(str(e))
 
 
 def getPricePoints():
@@ -364,8 +364,8 @@ def getPricePoints():
         ma = df['ma'][-1]
         return candle_close_rate, ma
     except Exception as e:
-        logging.info("failed at getPricePoints")
-        logging.info(str(e))
+        logging.error("failed at getPricePoints")
+        logging.error(str(e))
 
 
 def checkStop(candle_close_rate):
@@ -393,8 +393,8 @@ def checkStop(candle_close_rate):
                 else:
                     logging.info("selllimit failed")
     except Exception as e:
-        logging.info("failed at checkStop")
-        logging.info(str(e))
+        logging.error("failed at checkStop")
+        logging.error(str(e))
 
 
 def enterLong(candle_close_rate):
@@ -431,13 +431,13 @@ def enterLong(candle_close_rate):
                         buy_limit_cancel = API.cancel(buylimit['uuid'])
                         logging.info(buy_limit_cancel)
                     except:
-                        logging.info("failed at enterLong while cancelling buylimit order")
+                        logging.error("failed at enterLong while cancelling buylimit order")
             else:
                 logging.info("could not get uuid for buylimit")
                 logging.info("could be tst buy failed. If not we will place sell limit at next candle close")
     except Exception as e:
-        logging.info("failed at enterLong")
-        logging.info(str(e))
+        logging.error("failed at enterLong")
+        logging.error(str(e))
 
 
 def manageTrade(candle_close_rate):
@@ -460,8 +460,8 @@ def manageTrade(candle_close_rate):
                     MARKET, avail_balance, bestprice)
         checkStop(candle_close_rate)
     except Exception as e:
-        logging.info("failed at manageTrade")
-        logging.info(str(e))
+        logging.error("failed at manageTrade")
+        logging.error(str(e))
 
 def trade():
     t = datetime.datetime.now()
@@ -482,7 +482,7 @@ def trade():
         ### TRADE BEGIN ###
         logging.info(">>>")
         try:
-            print ">>>", datetime.datetime.now()
+            print ">>> {} {}".format(MARKET,datetime.datetime.now())
             logging.info("{} on {} min".format(MARKET, TF))
             candle_close_rate, ma = getPricePoints()
             if BTC_QUANTITY:
@@ -511,8 +511,8 @@ def trade():
                 logging.info("timing based on processing time")
                 time.sleep((TF * 60) - processing_time)
         except Exception as e:
-            logging.info("Something went wrong in the trade loop")
-            logging.info(str(e))
+            logging.error("Something went wrong in the trade loop")
+            logging.error(str(e))
             processing_time = time.time() - start
             time.sleep((TF * 60) - processing_time)
         # do some garbage collection
