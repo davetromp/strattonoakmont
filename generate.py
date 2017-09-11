@@ -32,7 +32,7 @@ for trade in trades:
                                 BO_PERCENT = {}
                                 EXIT_PERCENT = {}
                                 QUANTITY = 1
-                                BTC_QUANTITY = 0.005
+                                BTC_QUANTITY = 0.006
                                 LOWER_SIGNAL_BOUND = 1.0
                                 UPPER_SIGNAL_BOUND = 1.0
                                 UPPER_BUY_BOUND = 1.0
