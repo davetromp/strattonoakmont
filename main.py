@@ -313,7 +313,7 @@ def getBestSellRate(candle_close_rate):
             best_sell_rate = sellorderbook['Rate'][0]
             # logging.info(sellorderbook)
             logging.info("best sell rate: {}".format(best_sell_rate))
-            logging.info('Slippage should be about: {}%'.format( (1 - (candle_close_rate / best_sell_rate)) * 100))
+            logging.info('Slippage should be about: {}%'.format( str(1 - (candle_close_rate / best_sell_rate)) * 100))
             return best_sell_rate
         logging.info("available prices out of BOUND")
     except Exception as e:
@@ -407,6 +407,8 @@ def enterLong(candle_close_rate):
                 best_sell_rate,
                 QUANTITY * best_sell_rate
             ))
+            if BTC_QUANTITY:
+                QUANTITY = BTC_QUANTITY / candle_close_rate
             buylimit = API.buylimit(MARKET, QUANTITY, best_sell_rate)
             logging.info(buylimit)
             if 'uuid' in buylimit:
@@ -491,8 +493,6 @@ def trade():
             print ">>> {} {}".format(MARKET,datetime.datetime.now())
             logging.info("{} on {} min".format(MARKET, TF))
             candle_close_rate, ma = getPricePoints()
-            if BTC_QUANTITY:
-                QUANTITY = BTC_QUANTITY / candle_close_rate
             we_are_long = weAreLong()
             if not we_are_long and buySignaled(candle_close_rate, ma, PRICE_DIPPED):
                 enterLong(candle_close_rate)
