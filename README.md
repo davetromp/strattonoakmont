@@ -1,29 +1,38 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+Trading bot on the Bittrex api.
 
-### What is this repository for? ###
+### Strategy ###
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+The bot implements a simple mean reversion and breakout strategy using a simple moving average.
 
-### How do I get set up? ###
+### Backtesting ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+python main.py -c example.config -b example.png
 
-### Contribution guidelines ###
+### Running the bot ###
 
-* Writing tests
-* Code review
-* Other guidelines
+python main.py -c example.config
 
-### Who do I talk to? ###
+### Configuration ###
 
-* Repo owner or admin
-* Other community or team contact
+python generate.py
+
+### Installation ###
+
+Requirements file will follow. For now I am sure you will need to install:
+* pandas
+* matplotlib
+* requests
+
+Set your api keys by creating a secret.py file based on the example_secret.py file.
+
+### Steps to process ###
+
+* run 'python generate.py' to generate a set of possible configurations in folder configurations. Variables / currencies / etc can be set in the script.
+* run 'python backtest.py' to generate plots of all possible backtests in folder tests and save all results in backtests.csv. Of each market a plot of the best result will be saved in the folder best. The corresponding config file will be saved inthe active folder.
+* run 'python runall.py' to run all active configs.
+
+### Additional ###
+
+* run the script run-notebook-server.sh to start a jupyter notebook server. For setup instructions see the comments in the script.
