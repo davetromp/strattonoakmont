@@ -17,31 +17,28 @@ def getPerformance(market, plot = True):
             df = df.sort_values('Closed')
             df = df[df['Closed'] >= '2017-09-04']
             df = df.reset_index()
-            if df['OrderType'][0] == "LIMIT_SELL":
-                df = df [1:]
-            diffs = []
-            pl = 0.0
-            buy = 0.0
-            sell = 0.0
-            diffs.append(0.0)
+            df.index = pd.to_datetime(df['Closed'])
+            df['sell'] = 0.0
+            df['buy'] = 0.0
             for i in df.index:
                 if df['OrderType'][i] == 'LIMIT_BUY':
-                    buy = df['PricePerUnit'][i] * df['Quantity'][i]
+                    df['buy'][i] = df['PricePerUnit'][i] * df['Quantity'][i]
                 else:
-                    sell = df['PricePerUnit'][i] * df['Quantity'][i]
-                    pl += ( (sell - buy) / buy ) * 100.0
-                    diffs.append(pl)
+                    df['sell'][i] = df['PricePerUnit'][i] * df['Quantity'][i]
+            df['diffs'] = (df['sell'] - df['buy']).cumsum()
             if plot:
                 print "Difference between cumulative sells and buys"
-                print diffs[-1], "%"
-                plt.plot(diffs)
+                # print "{} %".format(df['diffs'][-1])
+                fig, ax = plt.subplots()
+                plt.plot(df['diffs'])
+                fig.autofmt_xdate()
                 plt.axhline(y=0.0, color='r', linestyle='-')
                 plt.title("Difference between cumulative sells and buys over time")
                 plt.ylabel("Difference %")
-                plt.xlabel("SELL Limit orders")
+                plt.xlabel("Time")
                 plt.show()
             else:
-                return diffs
+                return df
         else:
             print "There is no order history yet."
     except Exception as e:
