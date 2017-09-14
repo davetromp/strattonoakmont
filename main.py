@@ -191,7 +191,7 @@ def backtest(cache):
             verticalalignment='top', bbox=props)
     plt.title("BACKTEST {}".format(MARKET))
     plt.savefig(BACKTESTFILE)
-    logging.info("{},{},{},{},{},{},{},{},{},{}".format(MARKET,
+    print("{},{},{},{},{},{},{},{},{},{}".format(MARKET,
                     TF,
                     MEAN,
                     BREAKOUT,
@@ -201,7 +201,7 @@ def backtest(cache):
                     EXIT_PERCENT,
                     STOP_PERC,
                     sharpe_ratio))
-    plt.show()
+    # plt.show()
 
 
 def getMarketPrices(market, interval):
@@ -397,7 +397,7 @@ def checkStop(candle_close_rate):
         logging.error(str(e))
 
 
-def enterLong(candle_close_rate):
+def enterLong(candle_close_rate, QUANTITY):
     try:
         best_sell_rate = getBestSellRate(candle_close_rate)
         if best_sell_rate is not None:
@@ -495,7 +495,7 @@ def trade():
             candle_close_rate, ma = getPricePoints()
             we_are_long = weAreLong()
             if not we_are_long and buySignaled(candle_close_rate, ma, PRICE_DIPPED):
-                enterLong(candle_close_rate)
+                enterLong(candle_close_rate, QUANTITY)
             elif we_are_long:
                 manageTrade(candle_close_rate)
             if candle_close_rate < ma:
