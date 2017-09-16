@@ -17,7 +17,7 @@ def runTests():
 
     print "running backtests aginst all config files in folder configs"
     # print "MARKET,TF,MEAN,BREAKOUT,RTM,RTM_PERCENT,BO_PERCENT,EXIT_PERCENT,sharpe_ratio"
-    os.system("""echo "MARKET,TF,MEAN,BREAKOUT,RTM,RTM_PERCENT,BO_PERCENT,EXIT_PERCENT,STOP_PERC,sharpe_ratio" >> backtests.csv""")
+    os.system("""echo "days,trades,MARKET,TF,MEAN,BREAKOUT,RTM,RTM_PERCENT,BO_PERCENT,EXIT_PERCENT,STOP_PERC,sharpe_ratio" >> backtests.csv""")
     files = os.listdir("configs/")
     count = 1
     for f in files:
@@ -32,6 +32,8 @@ def runTests():
 
 def bestOnes():
     df = pd.read_csv("backtests.csv")
+    del df['days']
+    del df['trades']
     markets = df['MARKET'].unique()[:-1]
     dfmm = []
     dfm = {}

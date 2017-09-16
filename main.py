@@ -191,7 +191,9 @@ def backtest(cache):
             verticalalignment='top', bbox=props)
     plt.title("BACKTEST {}".format(MARKET))
     plt.savefig(BACKTESTFILE)
-    print("{},{},{},{},{},{},{},{},{},{}".format(MARKET,
+    print("{},{},{},{},{},{},{},{},{},{},{},{}".format(days,
+                    trades,
+                    MARKET,
                     TF,
                     MEAN,
                     BREAKOUT,
