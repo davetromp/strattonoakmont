@@ -2,6 +2,10 @@
 
 Trading bot on the Bittrex api. 
 
+20180711
+Trading part was implemented on version 1 of Bittrex api. This is no longer working. Feel free to implement a working version on api v2. :-)
+Backtesting still works.
+
 20180704
 This some code I had sitting in my archives. I used it to trade live, but it did not make me any money.
 Use at yout own risk. I provide this code for educational purposes only.
